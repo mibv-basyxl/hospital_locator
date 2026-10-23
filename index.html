@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediLocate — Online Hospital Locator System</title>
+<!--
+  MediLocate — Online Hospital Locator System using Google Maps Services
+  Tagline: "Find. Navigate. Connect."
+  -------------------------------------------------------------------
+  PROJECT STRUCTURE
+  hospital-locator/
+  ├── index.html          (this file — all views/markup only)
+  ├── css/
+  │   └── style.css       (step 2 — all styles incl. dashboard + responsive)
+  └── js/
+      └── app.js          (step 3 — all application logic)
+  -------------------------------------------------------------------
+  Google Maps integration point lives in app.js (maps module). Until a
+  real API key is configured (Admin → Settings), the app runs in
+  OFFLINE MAP MODE so the MVP is fully functional without a key.
+-->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toasts"></div>
+<div id="modal-root"></div>
+
+<!-- ============================================================ -->
+<!-- 1. LANDING PAGE                                              -->
+<!-- ============================================================ -->
+<div id="view-landing" class="view">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-links" id="nav-links">
+        <a href="javascript:void(0)" onclick="goLanding()">Home</a>
+        <a href="javascript:void(0)" onclick="openLocator()">Find Hospitals</a>
+        <a href="javascript:void(0)" onclick="openServices()">Services</a>
+        <a href="#about">About</a>
+        <a href="javascript:void(0)" onclick="openContact()">Contact</a>
+      </div>
+      <div class="nav-cta">
+        <button class="btn btn-ghost" onclick="openAuth('login')">Login</button>
+        <button class="btn btn-primary" onclick="openAuth('register')">Register</button>
+      </div>
+      <button class="icon-btn menu-btn" onclick="document.getElementById('nav-links').classList.toggle('hidden')" aria-label="Menu">☰</button>
+    </div>
+  </header>
+
+  <section class="hero" id="home">
+    <div class="hero-inner">
+      <span class="demo-banner">✦ Find care. Move forward.</span>
+      <div class="pill"><span>📍</span> Trusted hospital locator across Nigeria</div>
+      <h1>Find the Right <span>Hospital</span> Near You</h1>
+      <p class="sub">Search hospitals, healthcare services and emergency facilities around your location using intelligent Google Maps-powered location services.</p>
+      <div class="hero-search">
+        <div class="search-row">
+          <div class="search-field"><span class="ic">🏥</span><input id="hero-h-name" placeholder="Hospital name or service (e.g. Cardiology)"></div>
+          <div class="search-field"><span class="ic">📍</span><input id="hero-location" placeholder="Enter city, state or address"></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="heroSearch()">🔍 Find Hospitals</button>
+          <button class="btn btn-outline" onclick="useMyLocation()">🎯 Use My Location</button>
+          <button class="btn btn-danger-solid" onclick="openEmergency()">🚨 Emergency Hospital</button>
+        </div>
+      </div>
+      <div class="hero-stats" id="hero-stats"></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:10px">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Discover</span>
+        <h2>Find Hospitals Near You</h2>
+        <p>Browse verified hospitals across Nigeria's major cities — compare ratings, services and emergency availability in one place.</p>
+      </div>
+      <div class="grid cards-4" id="landing-hospitals"></div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Categories</span>
+        <h2>Hospital Categories</h2>
+        <p>Every kind of healthcare facility, organised so you can find the right level of care fast.</p>
+      </div>
+      <div class="grid cards-4" id="landing-categories"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Services</span>
+        <h2>Popular Healthcare Services</h2>
+        <p>Search by the care you need — our directory maps every service to the hospitals offering it.</p>
+      </div>
+      <div class="grid cards-4" id="landing-services"></div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">How it works</span>
+        <h2>Three steps to the right care</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><h3>Search or share your location</h3><p>Enter a hospital name, service or simply use your current location with one tap.</p></div>
+        <div class="step"><h3>Compare hospitals on the map</h3><p>Filter by distance, rating, emergency availability and verified status across a live map.</p></div>
+        <div class="step"><h3>Navigate and connect</h3><p>Get directions, travel time, call the hospital directly or send an enquiry in seconds.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Featured</span>
+        <h2>Featured Hospitals</h2>
+        <p>Sponsored listings from healthcare providers on Standard and Premium subscription plans.</p>
+      </div>
+      <div class="grid cards-3" id="landing-featured"></div>
+    </div>
+  </section>
+
+  <section class="section section-emergency" id="emergency">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Emergency</span>
+        <h2>Emergency Healthcare</h2>
+        <p>When every minute counts, MediLocate finds the nearest 24-hour emergency facility and gets you there.</p>
+      </div>
+      <div class="grid cards-3">
+        <div class="tile"><div class="t-ic t-rose">🚨</div><h3>Nearest Emergency Unit</h3><p>Instantly locate the closest hospital with an emergency department (A&amp;E).</p></div>
+        <div class="tile"><div class="t-ic t-rose">⏱️</div><h3>Distance &amp; Travel Time</h3><p>See distance and estimated travel time from your current position before you move.</p></div>
+        <div class="tile"><div class="t-ic t-rose">📞</div><h3>One-Tap Contact</h3><p>Call the emergency department or national emergency number directly from the app.</p></div>
+      </div>
+      <div class="cta-center">
+        <button class="btn btn-danger-solid btn-lg" onclick="openEmergency()">🚨 Find Emergency Hospital</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="about">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Why MediLocate</span>
+        <h2>Why Use Our Platform</h2>
+      </div>
+      <div class="grid cards-4">
+        <div class="tile"><div class="t-ic t-green">✅</div><h3>Verified Hospitals</h3><p>Every hospital we list passes a documented verification process before it earns the verified badge.</p></div>
+        <div class="tile"><div class="t-ic t-blue">🗺️</div><h3>Maps-Powered Search</h3><p>Google Maps services power geocoding, distances, directions and travel times.</p></div>
+        <div class="tile"><div class="t-ic t-amber">⭐</div><h3>Real Patient Reviews</h3><p>Ratings and reviews from real users, moderated by our admin team.</p></div>
+        <div class="tile"><div class="t-ic t-rose">📱</div><h3>Works Everywhere</h3><p>A fully responsive experience on desktop, tablet and mobile.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><span class="kicker">Testimonials</span><h2>What our users say</h2></div>
+      <div class="grid cards-3">
+        <div class="quote-card"><div class="stars">★★★★★</div><p>"Found a verified emergency hospital in Lagos in under a minute — the directions and call button saved real time when it mattered."</p>
+          <div class="who"><div class="avatar">AC</div><div><b>Adaeze C.</b><div class="who-sub">Patient, Lagos</div></div></div></div>
+        <div class="quote-card"><div class="stars">★★★★★</div><p>"As a small clinic we were invisible online. MediLocate's standard plan put us on the map — literally — and enquiries doubled."</p>
+          <div class="who"><div class="avatar">DO</div><div><b>Dr. D. Okafor</b><div class="who-sub">Clinic Director, Enugu</div></div></div></div>
+        <div class="quote-card"><div class="stars">★★★★☆</div><p>"The emergency mode is brilliant. It lists 24-hour facilities with distance and ETA before you even tap for directions."</p>
+          <div class="who"><div class="avatar">IM</div><div><b>Ibrahim M.</b><div class="who-sub">Patient, Abuja</div></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="cta-band">
+        <h2>Find. Navigate. Connect.</h2>
+        <p>Join thousands of patients and healthcare providers using MediLocate to find the right care, faster.</p>
+        <button class="btn btn-white-lg" onclick="openAuth('register')">Create Free Account</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <div class="brand brand-light"><span class="logo"><img src="offline-mark.svg" alt=""></span>MediLocate</div>
+          <p class="footer-about">Online Hospital Locator System using Google Maps services. Find the right hospital near you — search, compare, navigate.</p>
+        </div>
+        <div>
+          <h4>Platform</h4>
+          <a href="javascript:void(0)" onclick="openLocator()">Find Hospitals</a>
+          <a href="javascript:void(0)" onclick="openServices()">Services</a>
+          <a href="javascript:void(0)" onclick="openEmergency()">Emergency</a>
+          <a href="javascript:void(0)" onclick="openContact()">Contact</a>
+        </div>
+        <div>
+          <h4>For Providers</h4>
+          <a href="javascript:void(0)" onclick="openAuth('register','provider')">Register Your Hospital</a>
+          <a href="javascript:void(0)" onclick="openAuth('login')">Provider Login</a>
+          <a href="javascript:void(0)" onclick="openPlans()">Subscription Plans</a>
+          <a href="javascript:void(0)" onclick="showVerificationInfo()">Get Verified</a>
+        </div>
+        <div>
+          <h4>Legal &amp; Support</h4>
+          <a href="#about">About Us</a>
+          <a href="javascript:void(0)">Privacy Policy</a>
+          <a href="javascript:void(0)">Terms of Service</a>
+          <a href="javascript:void(0)">Help Centre</a>
+        </div>
+      </div>
+      <div class="bottom">
+        <span>© <span id="fy"></span> MediLocate · Online Hospital Locator System. Demo application — not for medical emergencies.</span>
+        <span>In an emergency, call your local emergency number immediately.</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. MAIN HOSPITAL LOCATOR                                     -->
+<!-- ============================================================ -->
+<div id="view-locator" class="view hidden">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-cta">
+        <button class="btn btn-ghost" onclick="goLanding()">← Back to Home</button>
+        <button class="btn btn-primary" onclick="openAuth('login')">Login</button>
+      </div>
+    </div>
+  </header>
+  <div class="main-content main-content-wide">
+    <div class="locator-grid">
+      <aside class="filter-panel">
+        <h3 class="filter-title">🏥 Search Filters</h3>
+        <div class="f-group">
+          <label>Hospital name</label>
+          <input id="f-name" placeholder="e.g. University of Calabar Teaching Hospital" oninput="applyFilters()">
+        </div>
+        <div class="f-group">
+          <label>Location (city/state/address)</label>
+          <input id="f-location" placeholder="e.g. Lagos, Uyo, Abuja…" oninput="applyFilters()">
+          <button class="btn btn-outline btn-sm btn-block" style="margin-top:8px" onclick="useMyLocation()">🎯 Use My Current Location</button>
+        </div>
+        <div class="f-group">
+          <label>Hospital category</label>
+          <select id="f-cat" onchange="applyFilters()"><option value="">All categories</option></select>
+        </div>
+        <div class="f-group">
+          <label>Medical service</label>
+          <select id="f-service" onchange="applyFilters()"><option value="">All services</option></select>
+        </div>
+        <div class="f-group">
+          <label>Radius</label>
+          <div class="radius-pills" id="radius-pills"></div>
+        </div>
+        <div class="f-group">
+          <label>Minimum rating</label>
+          <select id="f-rating" onchange="applyFilters()">
+            <option value="0">Any rating</option>
+            <option value="4">4 ★ and above</option>
+            <option value="4.5">4.5 ★ and above</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label>Sort by</label>
+          <select id="f-sort" onchange="applyFilters()">
+            <option value="nearest">Nearest</option>
+            <option value="rating">Highest rated</option>
+            <option value="reviews">Most reviewed</option>
+            <option value="relevance">Most relevant</option>
+          </select>
+        </div>
+        <div class="f-group f-checks">
+          <label class="check-row"><input type="checkbox" id="f-emergency" onchange="applyFilters()"> Emergency available</label>
+          <label class="check-row"><input type="checkbox" id="f-open24" onchange="applyFilters()"> Open 24 hours</label>
+          <label class="check-row"><input type="checkbox" id="f-opennow" onchange="applyFilters()"> Open now</label>
+          <label class="check-row"><input type="checkbox" id="f-verified" onchange="applyFilters()"> Verified only</label>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-block" onclick="resetFilters()">↺ Reset all filters</button>
+      </aside>
+      <div>
+        <div class="results-head">
+          <div>
+            <h1 class="page-title-sm">Find Hospitals</h1>
+            <span class="count" id="loc-count">0 hospitals found</span>
+          </div>
+          <div class="results-actions">
+            <button class="btn btn-outline btn-sm" onclick="useMyLocation()">🎯 My Location</button>
+            <button class="btn btn-danger-solid btn-sm" onclick="openEmergency()">🚨 Emergency</button>
+            <div class="seg">
+              <button id="seg-list" class="active" onclick="toggleViewMode('list')">☰ List</button>
+              <button id="seg-map" onclick="toggleViewMode('map')">🗺️ Map</button>
+            </div>
+          </div>
+        </div>
+        <div id="loc-list" class="loc-results"></div>
+        <div id="loc-map-wrap" class="map-panel hidden">
+          <div class="map-toolbar">
+            <b class="map-toolbar-title">Interactive Map</b>
+            <div class="map-legend">
+              <span><span class="legend-dot" style="background:var(--primary)"></span>Hospital</span>
+              <span><span class="legend-dot" style="background:var(--red)"></span>Emergency</span>
+              <span><span class="legend-dot" style="background:var(--blue)"></span>Your location</span>
+            </div>
+          </div>
+          <div id="map-canvas">
+            <div class="map-type">
+              <button id="mtype-road" class="active" onclick="setMapType('road')">Map</button>
+              <button id="mtype-sat" onclick="setMapType('sat')">Satellite</button>
+            </div>
+            <div class="map-zoom">
+              <button onclick="mapZoom(1)" aria-label="Zoom in">+</button>
+              <button onclick="mapZoom(-1)" aria-label="Zoom out">−</button>
+            </div>
+            <div class="map-info hidden" id="map-info"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 3. EMERGENCY MODE                                            -->
+<!-- ============================================================ -->
+<div id="view-emergency" class="view hidden">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-cta"><button class="btn btn-ghost" onclick="goBackFromPublic()">← Back</button></div>
+    </div>
+  </header>
+  <div class="main-content" style="max-width:1100px">
+    <div class="emergency-hero">
+      <div class="emergency-ic">🚨</div>
+      <div>
+        <h1>FIND EMERGENCY HOSPITAL</h1>
+        <p>We locate the nearest 24-hour emergency facility from your position, with distance, estimated travel time and one-tap contact.</p>
+      </div>
+      <div class="emergency-actions">
+        <button class="btn btn-white-solid" onclick="runEmergencySearch()">Locate Nearest Emergency Hospital</button>
+        <a class="btn btn-ghost-light" href="tel:112">📞 Call Emergency (112)</a>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Nearest Emergency Facilities</h3>
+            <span class="badge badge-emergency">Sorted by distance</span>
+          </div>
+          <div class="panel-body" id="emg-list"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Emergency Map</h3></div>
+          <div class="panel-body">
+            <div class="mini-map" id="emg-map"></div>
+          </div>
+        </div>
+        <div class="disclaimer">⚠️ <b>Disclaimer:</b> MediLocate is a locator service that helps you find nearby healthcare facilities. We do not provide emergency medical treatment, dispatch ambulances or guarantee availability. In a medical emergency, contact your local emergency number (e.g. 112) or go to the nearest emergency facility immediately.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 4. SERVICES DIRECTORY                                        -->
+<!-- ============================================================ -->
+<div id="view-services" class="view hidden">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-cta"><button class="btn btn-ghost" onclick="goBackFromPublic()">← Back</button></div>
+    </div>
+  </header>
+  <div class="main-content" style="max-width:1100px">
+    <div class="page-head">
+      <div>
+        <h1>Healthcare Services Directory</h1>
+        <div class="breadcrumb">Search every medical service and find hospitals offering it near you.</div>
+      </div>
+    </div>
+    <div class="search-row-inline">
+      <div class="search-field"><span class="ic">🔍</span><input id="svc-search" placeholder='Try: "Hospitals offering Cardiology near me"' oninput="renderServices()"></div>
+      <button class="btn btn-primary" onclick="serviceSearch()">Search Services</button>
+    </div>
+    <div class="grid cards-4" id="svc-grid"></div>
+    <div class="panel" id="svc-results" style="margin-top:26px"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 5. CONTACT PAGE                                              -->
+<!-- ============================================================ -->
+<div id="view-contact" class="view hidden">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-cta"><button class="btn btn-ghost" onclick="goBackFromPublic()">← Back</button></div>
+    </div>
+  </header>
+  <div class="main-content" style="max-width:1000px">
+    <div class="page-head">
+      <div>
+        <h1>Contact Us</h1>
+        <div class="breadcrumb">We'd love to hear from you — questions, feedback or partnership enquiries.</div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head"><h3>Send a Message</h3></div>
+        <div class="panel-body">
+          <form onsubmit="submitContact(event)">
+            <div class="field"><label>Full name</label><input id="ct-name" required></div>
+            <div class="field"><label>Email</label><input id="ct-email" type="email" required></div>
+            <div class="field">
+              <label>Subject</label>
+              <select id="ct-subject">
+                <option>General enquiry</option>
+                <option>Hospital registration</option>
+                <option>Partnership</option>
+                <option>Technical support</option>
+                <option>Report a problem</option>
+              </select>
+            </div>
+            <div class="field"><label>Message</label><textarea id="ct-msg" rows="5" required></textarea></div>
+            <button class="btn btn-primary btn-block" type="submit">Send Message</button>
+          </form>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Get in Touch</h3></div>
+          <div class="panel-body">
+            <div class="kv"><b>📍 Address</b><span>1 MediLocate Avenue, Port Harcourt, Rivers State, Nigeria</span></div>
+            <div class="kv"><b>📞 Phone</b><span>+234 800 000 0000</span></div>
+            <div class="kv"><b>✉️ Email</b><span>support@medilocate.ng</span></div>
+            <div class="kv"><b>🕒 Hours</b><span>Mon – Sat: 8:00am – 6:00pm (WAT)</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>For Hospitals</h3></div>
+          <div class="panel-body">
+            <p class="panel-note">List your facility, attract patients and manage your reputation. Explore our subscription plans or register your hospital today.</p>
+            <button class="btn btn-primary btn-block" onclick="openPlans()">View Subscription Plans</button>
+            <button class="btn btn-outline btn-block" style="margin-top:10px" onclick="openAuth('register','provider')">Register Your Hospital</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. STANDALONE PAGE CONTAINER (plans / info pages)            -->
+<!-- ============================================================ -->
+<div id="view-standalone-pages" class="view hidden">
+  <header class="site-header">
+    <div class="nav-wrap">
+      <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+      <div class="nav-cta"><button class="btn btn-ghost" onclick="goLanding()">← Back to Home</button></div>
+    </div>
+  </header>
+  <div class="main-content" id="standalone-content"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 7. APP SHELL (role-based dashboards)                         -->
+<!-- ============================================================ -->
+<div id="app" class="hidden">
+  <aside class="sidebar" id="sidebar">
+    <a href="javascript:void(0)" class="brand" onclick="goLanding()"><span class="logo"><img src="offline-mark.svg" alt=""></span>Medi<span class="brand-accent">Locate</span></a>
+    <div id="side-nav"></div>
+    <div class="s-bottom">MediLocate SaaS MVP<br>Session simulated locally · Demo build</div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar">
+      <button class="icon-btn" id="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Toggle menu">☰</button>
+      <div class="tb-search">
+        <span>🔍</span>
+        <input id="tb-global" placeholder="Search hospitals, services…" onkeydown="if(event.key==='Enter')heroSearch(document.getElementById('tb-global').value)">
+      </div>
+      <button class="icon-btn" onclick="openNotifPanel()" aria-label="Notifications">🔔<span class="count-dot hidden" id="notif-dot">0</span></button>
+      <div class="tb-user">
+        <div class="avatar" id="tb-avatar" style="width:36px;height:36px;font-size:13px">U</div>
+        <div class="tb-user-meta">
+          <b style="font-size:13px" id="tb-name">User</b>
+          <div style="font-size:11px;color:var(--muted)" id="tb-role">Patient</div>
+        </div>
+      </div>
+      <button class="logout-btn" title="Sign out of MediLocate" onclick="logout()" aria-label="Logout">⏻ <span>Logout</span></button>
+    </header>
+    <main class="main-content" id="main-content"></main>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- JS bundle — saved as js/app.js (delivered in step 3)         -->
+<!-- ============================================================ -->
+<script src="script.js"></script>
+</body>
+</html>
